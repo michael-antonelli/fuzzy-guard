@@ -1,0 +1,115 @@
+#!/bin/bash
+
+# Default variable definitions, VULSDIR set from environmental variable set in executing user's ~/.bashrc file
+HELP=`echo "USAGE:\n\nvuls-build-config [SUBNET CONFIG FILE] [OPTIONS]\n\nOPTIONS:\n\n-c, --config\t- Sets the destination for the config file\n-h, --help\t- Prints this help message"`
+VULSDIR=$VULS_DOCKER_DIR
+LOGFILE="/var/log/vuls/vuls.log"
+
+# Function definitions
+parse_nmap_to_config (){
+  
+  # Set the destination of the config file in the case that a custom one was passed, save the value of IFS to return it to its original state after the script runs.
+  CONFIG_FILE="$VULSDIR/config.toml"
+  IFS_ORIGIN=$IFS
+
+  # Create/Clear additive temporary files
+  > check-names.tmp
+  > hosts.tmp
+
+  # Insert default configs to config.toml file
+  echo -e "[servers]\n" > $CONFIG_FILE
+  echo 'Checking subnets...'
+
+  # Fetch hostnames and IP's with nmap
+  for SUBNET in `cat $1`; do
+    echo $SUBNET"..."
+
+    nmap -Pn -p 22 $SUBNET | egrep -B3 'open' | grep -i 'report for' > check-names.tmp 
+
+    IFS=$'\n'
+
+    # Check if a hostname was given or just an IP address
+    for LINE in `cat check-names.tmp`; do
+      if [ `echo $LINE | awk '{print $(NF-1)}'` == 'for' ]; then
+        echo $LINE | awk '{print $NF}' | sed 's/[()]//g' >> hosts.tmp 
+      else
+        echo $LINE | awk '{print $NF,$(NF-1)}' | sed 's/[()]//g' >> hosts.tmp  
+      fi
+    done
+  done  
+    
+  
+  
+  # Add the config block for each host using the hostname (if available) in the server tag and the IP as the actual host destination
+  for HOST in `cat hosts.tmp`; do
+
+    # Check to see if the host has already been added to the config file; if not, add it; if so, skip it and notify the log.
+      if [ `echo $HOST | wc -w` = 2 ]; then
+        HOSTNAME=`echo $HOST | cut -d " " -f 2 | cut -d "." -f 1`
+        IP_ADDRESS=`echo $HOST | cut -d " " -f 1`
+        if grep servers.$HOSTNAME.$ $CONFIG_FILE 1> /dev/null; then
+          echo "$(date +%F--%R): Duplicate host or IP found, skipping "$HOSTNAME" ..." >> $LOGFILE
+        else
+          echo -e "[servers.${HOSTNAME}]\nhost\t\t= '$IP_ADDRESS'\nport\t\t= '22'\nuser\t\t= 'rsvuls'\nscanMode\t= ['fast']\nsshConfigPath\t= '/root/.ssh/config'\n" >> $CONFIG_FILE
+        fi
+      else
+        IP_ADDRESS=`echo $HOST | cut -d " " -f 1`
+        IP_HYPHEN=`echo $IP_ADDRESS | sed 's/\./-/g'`
+        if grep $IP_ADDRESS $CONFIG_FILE 1> /dev/null; then
+          echo "$(date +%F--%R): Duplicate host or IP found, skipping "$IP_ADDRESS" ..." >> $LOGFILE
+        else
+          echo -e "[servers.${IP_HYPHEN}]\nhost\t\t= '$IP_ADDRESS'\nport\t\t= '22'\nuser\t\t= 'rsvuls'\nscanMode\t= ['fast']\nsshConfigPath\t= '/root/.ssh/config'\n" >> $CONFIG_FILE
+        fi
+      fi
+  
+    if [ ! -f ~/.ssh/known_hosts ]; then 
+      > ~/.ssh/known_hosts
+    fi
+    
+    # If the host's IP doesn't appear in known_hosts add its SSH fingerprint
+    grep "$IP_ADDRESS" ~/.ssh/known_hosts > /dev/null
+    KNOWN_HOST_GREP_RESULT=$?
+    if [ $KNOWN_HOST_GREP_RESULT -eq 1 ]; then
+      ssh-keyscan $IP_ADDRESS 2> /dev/null >> ~/.ssh/known_hosts
+    fi
+  done
+
+  # reset IFS
+  IFS=$IFS_ORIGIN
+  # Clean up temp files
+  rm -f check-names.tmp hosts.tmp
+}
+
+# Parse arguments and options, then build the config file
+if [ -z $1 ]; then
+  echo -e "ERROR: No subnet config entered\n"$HELP
+elif [ $1 == 'help' ] || [ $1 == '-h' ] || [ $1 == '--help' ]; then
+  echo $HELP
+else
+# If options are present parse them
+  case $2 in
+
+    "help" | "-h" | "--help")
+      echo $HELP
+    ;;
+
+    "-c" | "--config")
+      if [ -d $3 ]; then
+        # If the directory exists change the VULSDIR and cut off the trailing '/' if it's there
+        VULSDIR=`echo $3 | sed 's/\/$//'`
+      else
+        echo -e "ERROR: Could not stat directory '$3'"
+      fi
+    ;;
+
+    '')
+    ;;
+
+    *)
+      echo -e "ERROR: Option '$2' not recognized\n"$HELP
+    ;;
+  esac
+
+  # Run the configuration
+  parse_nmap_to_config $1
+fi

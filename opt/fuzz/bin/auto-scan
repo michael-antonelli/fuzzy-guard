@@ -1,0 +1,34 @@
+#!/bin/bash
+
+source ~/.bashrc
+
+LOGFILE="/var/log/vuls/vuls.log"
+REPORT_DIR="/rsa_data/vuls/formatted-reports"
+EXEC_DIR="/home/rsvuls/vuls-setup-scan"
+
+echo "$(date +%F--%R): Executing scan as user $(whoami)..." >> $LOGFILE
+echo "$(date +%F--%R): Checking setup..." >> $LOGFILE
+
+echo $PATH | grep -i vuls-setup-scan
+SETUP_IN_PATH=$?
+ls -lda $EXEC_DIR/subnets.in
+SUBNETS_IN_PATH=$?
+
+if [ $SETUP_IN_PATH -eq 0 ] && [ $SUBNETS_IN_PATH -eq 0 ]; then
+  echo "$(date +%F--%R): Building config file..." >> $LOGFILE
+  vuls-build-config.sh $EXEC_DIR/subnets.in
+  echo "$(date +%F--%R): Executing scan..." >> $LOGFILE
+  scan.sh
+  echo "$(date +%F--%R): Download RedHat OVAL DB..." >> $LOGFILE
+  oval.sh --redhat
+  echo "$(date +%F--%R): Download Ubuntu OVAL DB..." >> $LOGFILE
+  oval.sh --ubuntu
+  echo "$(date +%F--%R): Generating report..." >> $LOGFILE
+  report.sh -ignore-unfixed -cvss-over=9.9 >> $REPORT_DIR/$(date +%F)-critical-scan.log
+  report.sh -ignore-unfixed -format-one-line-text >> $REPORT_DIR/$(date +%F)-one-line-scan.log
+  echo "$(date +%F--%R): Scan and report success!" >> $LOGFILE
+else
+  echo "$(date +%F--%R): setup: $SETUP_IN_PATH" >> $LOGFILE
+  echo "$(date +%F--%R): subnets: $SUBNETS_IN_PATH" >> $LOGFILE
+  echo "$(date +%F--%R): ERROR IN SETUP: Make sure the directry 'vuls-setup-scan' is in \$PATH and 'subnets.in' appears in that directory." >> $LOGFILE
+fi

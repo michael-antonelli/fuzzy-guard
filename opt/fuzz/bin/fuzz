@@ -1,0 +1,14 @@
+#!/usr/bin/python3
+import argparse
+import os
+#import datetime as dt
+
+parser = argparse.ArgumentParser()
+
+# scan
+parser.add_argument("scan", nargs="0", )
+# tui
+parser.add_argument("tui", nargs="0", )
+# report
+parser.add_argument("report", nargs="0", )
+
