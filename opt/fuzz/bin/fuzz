@@ -6,9 +6,13 @@ import os
 parser = argparse.ArgumentParser()
 
 # scan
-parser.add_argument("scan", nargs="0", )
+parser.add_argument("scan", action='store_true')
 # tui
-parser.add_argument("tui", nargs="0", )
+parser.add_argument("tui", action='store_true')
 # report
-parser.add_argument("report", nargs="0", )
+parser.add_argument("report", action='store_true')
+
+args = parser.parse_args()
+
+print(args)
 
