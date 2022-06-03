@@ -4,14 +4,16 @@ import os
 #import datetime as dt
 
 parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers(help='sub-command help')
 
 # scan
-parser.add_argument("scan", action='store_true')
-# tui
-parser.add_argument("tui", action='store_true')
-# report
-parser.add_argument("report", action='store_true')
+scan_parser = subparsers.add_parser('scan', help='scan help')
+scan_parser.add_argument('foo', type=int)
 
+# tui
+tui_parser = subparsers.add_parser('tui', help='tui help')
+# report
+report_parser = subparsers.add_parser('report', help='report help')
 args = parser.parse_args()
 
 print(args)
