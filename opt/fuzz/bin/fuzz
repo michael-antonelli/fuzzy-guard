@@ -1,20 +1,30 @@
 #!/usr/bin/python3
 import argparse
 import os
-#import datetime as dt
 
 parser = argparse.ArgumentParser()
-subparsers = parser.add_subparsers(help='sub-command help')
+subparsers = parser.add_subparsers(dest="subcommand")
 
-# scan
-scan_parser = subparsers.add_parser('scan', help='scan help')
-scan_parser.add_argument('foo', type=int)
+def subcommand(args=[], parent=subparsers):
+    def decorator(func):
+        parser = parent.add_parser(func.__name__, description=func.__doc__)
+        for arg in args:
+            parser.add_argument(*arg[0], **arg[1])
+        parser.set_defaults(func=func)
+    return decorator
 
-# tui
-tui_parser = subparsers.add_parser('tui', help='tui help')
-# report
-report_parser = subparsers.add_parser('report', help='report help')
-args = parser.parse_args()
+@subcommand()
+def nothing(args):
+    print('SUCCESS!')
 
-print(args)
+@subcommand()
+def help(args):
+    parser.print_help()
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    if args.subcommand is None:
+        parser.print_help()
+    else:
+        args.func(args)
 
