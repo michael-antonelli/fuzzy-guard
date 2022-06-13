@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 import argparse
+import subprocess
 import os
+from dotenv import load_dotenv
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest="subcommand")
@@ -13,15 +15,44 @@ def subcommand(args=[], parent=subparsers):
         parser.set_defaults(func=func)
     return decorator
 
+def argument(*name_or_flags, **kwargs):
+    return ([*name_or_flags], kwargs)
+
 @subcommand()
-def nothing(args):
-    print('SUCCESS!')
+def scan(args):
+    subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/scan.sh', shell=True, env=fuzz_env)
+
+@subcommand()
+def buildconfig(args):
+    subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/build-config', shell=True, env=fuzz_env)
+
+@subcommand()
+def tui(args):
+    subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/tui.sh', shell=True, env=fuzz_env)
+
+@subcommand()
+def oval(args):
+    subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/oval.sh', shell=True, env=fuzz_env)
+
+@subcommand()
+def report(args):
+    subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/report.sh', shell=True, env=fuzz_env)
+
+@subcommand([argument("-n", "--number", help="The number to print")])
+def test(args):
+    if args.number is None:
+        parser.print_help()
+    else:
+        cmd = 'echo' + ' ' + args.number
+        subprocess.run(cmd, shell=True, env=fuzz_env)
 
 @subcommand()
 def help(args):
     parser.print_help()
 
 if __name__ == '__main__':
+    load_dotenv('../conf/fuzz.conf')
+    fuzz_env = os.environ.copy()
     args = parser.parse_args()
     if args.subcommand is None:
         parser.print_help()
