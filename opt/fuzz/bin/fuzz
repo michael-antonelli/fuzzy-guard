@@ -30,10 +30,15 @@ def buildconfig(args):
 def tui(args):
     subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/tui.sh', shell=True, env=fuzz_env)
 
-@subcommand()
+@subcommand([argument("-O", "--os", "--operating-system", help="Operating system")])
 def oval(args):
-    subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/oval.sh', shell=True, env=fuzz_env)
-
+    if args.os is None:
+        parser.print_help()
+    else:
+        print(os.getenv['FUZZ_DIR'])
+#        cmdargs = 'bash' + os.getenv['FUZZ_DIR'] + '/opt/fuzz/bin/oval.sh ' + arg.os
+#        subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/oval.sh', shell=True, env=fuzz_env)
+        print(cmdargs)
 @subcommand()
 def report(args):
     subprocess.run('cat $FUZZ_DIR/opt/fuzz/bin/report.sh', shell=True, env=fuzz_env)
