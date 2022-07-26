@@ -7,3 +7,4 @@
 # add /opt/fuzz/bin to $PATH for vuls user
 # add env vars to vuls bashrc
 # cron setup
+# logrotate
